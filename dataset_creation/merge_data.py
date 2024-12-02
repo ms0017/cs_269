@@ -47,4 +47,5 @@ def print_timestep(ds, variable, time):
 
 era5land = xr.open_dataset("data.grib", engine="pynio")
 era5land = coarsen_data(era5land, 1, 1)
+
 print_timestep(era5land, "STL1_GDS0_DBLY", "2019-01-01T00:00:00")
