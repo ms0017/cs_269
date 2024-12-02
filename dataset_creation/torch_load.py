@@ -62,7 +62,7 @@ lon_column = 'longitude'  # The column with longitude
 
 # Create Dataset from CSV
 dataset = ERA5_With_Observations(csv_file=csv_file, 
-                                label_column=label_columns, 
+                                label_columns=label_columns, 
                                 date_column=date_column,
                                 lat_column=lat_column,
                                 lon_column=lon_column)
