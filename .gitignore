@@ -3,3 +3,4 @@
 *.grib
 dataset_creation/station_daily/**
 *.png
+*.tif

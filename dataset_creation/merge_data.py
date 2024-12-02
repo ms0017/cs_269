@@ -3,30 +3,33 @@ import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 from datetime import datetime
 import numpy as np
+import pandas as pd
+import os
+import datetime
+import rasterio
 
-def coarsen_data(ds, latitude_step, longitude_step):
-    # Define a function to round the value to the nearest whole number (for integer alignment)
-    def round_to_integer(value):
-        return np.floor(value)
 
-    # Create latitude bins from the minimum to the maximum latitude, ensuring the bins are aligned to integer degrees
-    lat_min = round_to_integer(ds.g0_lat_1.min())
-    lat_max = round_to_integer(ds.g0_lat_1.max()) + latitude_step  # Ensure max is included
+# Bin_Size
+coarsen_factor = 5
 
-    # Create longitude bins from the minimum to the maximum longitude, ensuring the bins are aligned to integer degrees
-    lon_min = round_to_integer(ds.g0_lon_2.min())
-    lon_max = round_to_integer(ds.g0_lon_2.max()) + longitude_step  # Ensure max is included
+long_bins = np.arange(-20, 55, coarsen_factor)
+lat_bins = np.arange(-40, 40, coarsen_factor)
 
-    lat_bins = np.arange(lat_min, lat_max, latitude_step)
-    lon_bins = np.arange(lon_min, lon_max, longitude_step)
+print(len(long_bins), len(lat_bins), len(long_bins) * len(lat_bins))
 
-    # First group by latitude bins and compute mean
-    ds_lat_coarsened = ds.groupby_bins('g0_lat_1', lat_bins).mean(dim='g0_lat_1')
 
-    # Then group by longitude bins and compute mean
-    ds = ds_lat_coarsened.groupby_bins('g0_lon_2', lon_bins).mean(dim='g0_lon_2')
+def coarsen_data(ds):
+    if isinstance(ds, xr.Dataset):
+        ds_lat_coarsened = ds.groupby_bins('latitude', lat_bins).mean(dim='latitude')
+        return ds_lat_coarsened.groupby_bins('longitude', long_bins).mean(dim='longitude')
+    else:
+        ds['longitude_bin'] = pd.cut(ds['longitude'], bins=long_bins, include_lowest=True)
+        ds['latitude_bin'] = pd.cut(ds['latitude'], bins=lat_bins, include_lowest=True)
 
-    return ds
+        # Group by the bins and compute the mean for each bin
+        return ds.groupby(['longitude_bin', 'latitude_bin']).agg({
+            'value': 'mean'
+        }).reset_index()
 
 def print_timestep(ds, variable, time):
     ds = ds.get(variable)
@@ -45,7 +48,98 @@ def print_timestep(ds, variable, time):
     
     fig.savefig("era5_2m_temperature.png")
 
-era5land = xr.open_dataset("data.grib", engine="pynio")
-era5land = coarsen_data(era5land, 1, 1)
+def gather_era5_data(file_name):
+    era5land = xr.open_dataset("data.grib", engine="pynio")
+    era5land = era5land.rename({
+        'initial_time0_hours': 'time',
+        'g0_lat_1': 'latitude',
+        'g0_lon_2': 'longitude'
+    })
+    
+    return era5land
 
-print_timestep(era5land, "STL1_GDS0_DBLY", "2019-01-01T00:00:00")
+def gather_land_station_data(start_date, end_date, periods):
+    # Define the date range and periods
+    delta = datetime.timedelta(days=1)
+    
+    columns = ['name', 'wigosid', 'country code', 'in OSCAR', 'longitude', 'latitude',
+           '#received', '#expected', 'default schedule', 'color code',
+           'description', 'variable', 'date', 'center']
+
+    # Create an empty DataFrame to store the results
+    combined_df = pd.DataFrame(columns=columns)
+
+    # Generate the dates list
+    dates = []
+    current_date = start_date
+    while current_date <= end_date:
+        dates.append(current_date)
+        current_date += delta
+
+    # Loop through each date and period
+    for date in dates:
+        for period in periods:
+            filename = os.path.join('12hour', 'data_' + date.strftime('%Y-%m-%d') + f'_{period}' + '.csv')
+            if os.path.exists(filename):
+                df = pd.read_csv(filename)
+                
+                # Ensure the necessary columns exist
+                if 'longitude' in df.columns and 'latitude' in df.columns and 'color code' in df.columns:
+                    # Extract stations in Africa based on longitude and latitude ranges
+                    df_africa = df[(df['longitude'] >= -20) & (df['longitude'] <= 55) & 
+                                (df['latitude'] >= -40) & (df['latitude'] <= 40)]
+                    
+                    # Add the date and period columns to the DataFrame
+                    datetime_str = f"{date.strftime('%Y-%m-%d')}T{int(period):02d}:00:00"
+                    df_africa.loc[:, 'date'] = datetime_str
+
+                    # Append the filtered data to the combined DataFrame
+                    combined_df = pd.concat([combined_df, df_africa[columns]])
+
+    return combined_df
+
+def gather_population(filename):
+    with rasterio.open(filename) as dataset:
+        # Read the data from all bands
+        data = dataset.read()  # Read all bands (multi-dimensional array)
+        
+        # Get the metadata
+        transform = dataset.transform  # Affine transform for coordinates
+        width = dataset.width
+        height = dataset.height
+        
+        # Create a 2D array of pixel coordinates (row, col)
+        rows, cols = np.indices((height, width))
+        
+        # Convert pixel indices to geographic coordinates
+        lon, lat = rasterio.transform.xy(transform, rows, cols)
+        
+        # Flatten the arrays to make a 1D DataFrame
+        lon = np.array(lon).flatten()
+        lat = np.array(lat).flatten()
+        
+        # Flatten the data array for each band and stack them into columns
+        bands = [data[i].flatten() for i in range(data.shape[0])]
+        band_names = [f'band_{i+1}' for i in range(data.shape[0])]  # Create band names
+        
+        # Combine the band data into a DataFrame
+        df = pd.DataFrame({
+            'longitude': lon,
+            'latitude': lat,
+            'value': bands[0],
+            #**{band_names[i]: bands[i] for i in range(len(bands))}
+        })
+    df_africa = df[(df['longitude'] >= -20) & (df['longitude'] <= 55) & 
+                (df['latitude'] >= -40) & (df['latitude'] <= 40)]
+    return df_africa
+
+population = gather_population('ppp_2019_1km_Aggregated.tif')
+print(len(population))
+population = coarsen_data(population)
+print(len(population))
+
+era5land = gather_era5_data("data.grib")
+era5land = coarsen_data(era5land)
+
+land_df = gather_land_station_data(datetime.date(2019, 1, 1), datetime.date(2019, 1, 31), ['06', '18'])
+#print_timestep(era5land, "STL1_GDS0_DBLY", "2019-01-01T00:00:00")
