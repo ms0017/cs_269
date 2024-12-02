@@ -130,7 +130,7 @@ def plot_4_variables(df, variables, time):
         formatted_time = time.strftime("%B %d, %Y at %I:%M %p")
         ax.set_title(f"{variable}")
     
-    plt.title(f"{formatted_time}")
+    fig.suptitle(f"{formatted_time}")
     
     # Adjust layout for better spacing
     plt.tight_layout()
@@ -150,5 +150,6 @@ print(df.columns, df['date'][0])
 makedirs('figures', exist_ok=True)
 plot_1_variable(df, 'STL1_GDS0_DBLY', df['date'][0])
 plot_1_variable(df, 'complete', df['date'][0])
-plot_4_variables(df, ['STL1_GDS0_DBLY', '2T_GDS0_SFC', 'low_availability', 'complete'], df['date'][0])
+plot_4_variables(df, ['STL1_GDS0_DBLY', '2T_GDS0_SFC', 'low_availability', 'complete'], pd.to_datetime('2019-01-01 06:00:00'))
+plot_4_variables(df, ['STL1_GDS0_DBLY', '2T_GDS0_SFC', 'low_availability', 'complete'], pd.to_datetime('2019-01-31 18:00:00'))
 #print_timestep(df, 'STL1_GDS0_DBLY', df['date'][0])
