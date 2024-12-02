@@ -11,6 +11,8 @@ periods = ["00", "12"]
 # Calculate the number of days between start and end dates
 delta = end_date - start_date
 
+os.mkdir('./station_daily')
+
 # Loop over each day
 for i in range(delta.days + 1):
     date = start_date + timedelta(days=i)
@@ -38,7 +40,7 @@ for i in range(delta.days + 1):
         
         # Save the content to a file
         filename = f"data_{date_str}.{ext}"
-        with open(os.path.join('./daily', filename), 'wb') as file:
+        with open(os.path.join('./station_daily', filename), 'wb') as file:
             file.write(response.content)
         print(f"Downloaded data for {date_str}")
     else:
