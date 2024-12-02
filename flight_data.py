@@ -1,5 +1,67 @@
 import geopandas as gpd
 import pandas as pd
+import matplotlib.pyplot as plt
+
+def create_map_visualization(
+    merged_data,
+    column_to_plot,
+    title,
+    legend_label,
+    top_n=10,
+    figsize=(15, 15),
+    cmap='YlOrRd',
+    annotation_format='.0f'
+):
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    
+    # Get the full world map for context
+    shapefile_path = r"./10m_cultural/10m_cultural/ne_10m_admin_0_countries.shp"
+    world = gpd.read_file(shapefile_path)
+    
+    # Plot all of Africa in light grey for context
+    africa = world[world['CONTINENT'] == 'Africa']
+    africa.plot(ax=ax, color='lightgrey', edgecolor='white', linewidth=0.5)
+    
+    # Create choropleth map
+    merged_data.plot(
+        column=column_to_plot,
+        ax=ax,
+        legend=True,
+        legend_kwds={
+            'label': legend_label,
+            'orientation': 'horizontal',
+            'shrink': 0.6,
+            'pad': 0.05
+        },
+        missing_kwds={'color': 'lightgrey'},
+        cmap=cmap,
+        edgecolor='white',
+        linewidth=0.5
+    )
+    
+    # Customize the map
+    ax.axis('off')
+    plt.title(title, pad=20, fontsize=16)
+    
+    top_n_countries = merged_data.nlargest(top_n, column_to_plot)
+    for idx, row in top_n_countries.iterrows():
+        centroid = row.geometry.centroid
+        plt.annotate(
+            f"{row['Country']}\n({row[column_to_plot]:{annotation_format}})",
+            xy=(centroid.x, centroid.y),
+            xytext=(10, 10),
+            textcoords="offset points",
+            fontsize=8,
+            bbox=dict(facecolor='white', edgecolor='none', alpha=0.7),
+            ha='center'
+        )
+    
+    plt.tight_layout()
+    filename = f'african_{column_to_plot.lower()}_map.png'
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    return filename
 
 def get_country_boundaries_and_stats(countries, stats_data):
     shapefile_path = r"./10m_cultural/10m_cultural/ne_10m_admin_0_countries.shp"
@@ -14,6 +76,7 @@ def get_country_boundaries_and_stats(countries, stats_data):
     african_countries = world[world['SOVEREIGNT'].isin(countries)].copy()
     merged_data = pd.merge(african_countries, stats_df, how='inner', left_on='SOVEREIGNT', right_on='Country')
     merged_data['Aircraft_per_Site'] = (merged_data['Aircraft_Seen'] / merged_data['Sites']).round(2)
+    print(f"Total countries: {len(merged_data)}")
     
     return merged_data
 
@@ -81,7 +144,44 @@ if __name__ == '__main__':
         
         merged_data = get_country_boundaries_and_stats(stats_data.keys(), stats_data)
         analyze_coverage(merged_data)
-        merged_data.to_csv('african_countries_flight_data.csv', index=False)
+
+        # ignore cols that begin with 'ADM0', 'FCLASS'
+        cols_to_keep = [col for col in merged_data.columns if not col.startswith('ADM0') 
+                        and not col.startswith('FCLASS') and not col.startswith('NAME')
+                        and not col.startswith('MAP') and not col.startswith('ISO')
+                        and not col.startswith('MIN') and not col.startswith('MAX')]
+        merged_data = merged_data[cols_to_keep]
+
+        merged_data.to_csv('african_countries_flight_data.csv', index=False, sep='|')
+        create_map_visualization(
+            merged_data,
+            'Aircraft_Seen',
+            'Aircraft Tracked in African Countries',
+            'Aircraft Tracked'
+        )
+        
+        create_map_visualization(
+            merged_data,
+            'Sites',
+            'Monitoring Sites in African Countries',
+            'Number of Sites'
+        )
+        
+        create_map_visualization(
+            merged_data,
+            'Aircraft_per_Site',
+            'Average Aircraft per Site in African Countries',
+            'Aircraft per Site',
+            annotation_format='.1f'
+        )
+        create_map_visualization(
+            merged_data,
+            'GDP_YEAR',
+            'GDP per Capita in African Countries',
+            'GDP per Capita',
+            cmap='YlGn',
+            annotation_format='.0f'
+        )
         
     except Exception as e:
         print(f"An error occurred: {str(e)}")
