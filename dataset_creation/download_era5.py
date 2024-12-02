@@ -30,7 +30,7 @@ request = {
         "28", "29", "30",
         "31"
     ],
-    "time": ["00:00", "12:00"],
+    "time": ["06:00", "18:00"],
     "data_format": "grib",
     "download_format": "zip",
     "area": [40, -20, -40, 55]
