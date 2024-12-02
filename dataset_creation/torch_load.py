@@ -2,20 +2,6 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import pandas as pd
 
-import torch
-from torch.utils.data import Dataset
-import pandas as pd
-
-import torch
-from torch.utils.data import Dataset
-import pandas as pd
-import numpy as np
-
-import torch
-from torch.utils.data import Dataset
-import pandas as pd
-import numpy as np
-
 class ERA5_With_Observations(Dataset):
     def __init__(self, csv_file, label_columns, date_column, lat_column, lon_column, transform=None):
         """
@@ -74,7 +60,6 @@ class ERA5_With_Observations(Dataset):
             sample = self.transform(sample)
 
         return sample
-
 
 # Define file path and columns
 csv_file = 'dataset.csv'  # Replace with your file path
