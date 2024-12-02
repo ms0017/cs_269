@@ -1,0 +1,4 @@
+*.zip
+*.csv
+dataset_creation/station_daily/**
+*.png
