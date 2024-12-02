@@ -41,8 +41,8 @@ def coarsen_data(ds):
         
         return ds_coarsened
     else:
-        ds['longitude'] = pd.cut(ds['longitude'], bins=long_bins, include_lowest=True)
-        ds['latitude'] = pd.cut(ds['latitude'], bins=lat_bins, include_lowest=True)
+        ds['latitude'] = pd.cut(ds['latitude'], bins=lat_bins, include_lowest=True, right=True).apply(lambda x: x.right)
+        ds['longitude'] = pd.cut(ds['longitude'], bins=long_bins, include_lowest=True, right=True).apply(lambda x: x.right)
 
         # Group by the bins and compute the mean for each bin
         return ds.groupby(['longitude', 'latitude']).agg({
@@ -198,7 +198,6 @@ def gather_flights(filename):
     return dataset
 
 flights = gather_flights('flights/african_countries_flight_data.csv')
-print(flights.columns)
 
 population = gather_population('ppp_2019_1km_Aggregated.tif')
 population = coarsen_data(population)

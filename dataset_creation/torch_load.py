@@ -2,6 +2,20 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import pandas as pd
 
+import torch
+from torch.utils.data import Dataset
+import pandas as pd
+
+import torch
+from torch.utils.data import Dataset
+import pandas as pd
+import numpy as np
+
+import torch
+from torch.utils.data import Dataset
+import pandas as pd
+import numpy as np
+
 class ERA5_With_Observations(Dataset):
     def __init__(self, csv_file, label_columns, date_column, lat_column, lon_column, transform=None):
         """
@@ -19,30 +33,41 @@ class ERA5_With_Observations(Dataset):
         self.lat_column = lat_column
         self.lon_column = lon_column
         self.transform = transform
+        
+        # Convert the date column to datetime and then to a timestamp (e.g., seconds since epoch)
+        self.data[self.date_column] = pd.to_datetime(self.data[self.date_column], errors='coerce')
+        self.data['date_timestamp'] = self.data[self.date_column].astype(int) / 10**9  # Convert to seconds since epoch
+        
+        # Group data by date and merge latitudes and longitudes as arrays
+        self.date_groups = self.data.groupby('date_timestamp').agg({
+            'latitude': list,
+            'longitude': list,
+            **{label: list for label in self.label_columns}  # Keep all label values as arrays
+        }).reset_index()
 
     def __len__(self):
-        return len(self.data)
+        return len(self.date_groups)
 
     def __getitem__(self, idx):
-        # Extract row by index
-        row = self.data.iloc[idx]
+        # Extract the grouped row by index
+        row = self.date_groups.iloc[idx]
         
-        # Separate features and labels
-        features = row.drop(self.label_columns)  # Drop all label columns
-        labels = {label: row[label] for label in self.label_columns}  # Extract multiple labels
+        # Extract the date, latitude and longitude arrays, and labels arrays
+        date = row['date_timestamp']
+        latitude = np.array(row['latitude'])
+        longitude = np.array(row['longitude'])
         
-        # Extract date, latitude, and longitude as separate indices (or as features)
-        date = row[self.date_column]
-        latitude = row[self.lat_column]
-        longitude = row[self.lon_column]
-
-        # Combine features and indices into a single dictionary
+        # Convert lat/long arrays to a 2D array (if desired)
+        location = np.column_stack((latitude, longitude))
+        
+        # Extract label arrays
+        labels = {label: torch.tensor(row[label], dtype=torch.float32) for label in self.label_columns}
+        
+        # Combine into a sample dictionary
         sample = {
-            'date': torch.tensor(date, dtype=torch.float32),  # Convert to tensor
-            'latitude': torch.tensor(latitude, dtype=torch.float32),
-            'longitude': torch.tensor(longitude, dtype=torch.float32),
-            'features': torch.tensor(features.drop([self.date_column, self.lat_column, self.lon_column]).values, dtype=torch.float32),
-            'labels': {key: torch.tensor(value, dtype=torch.float32) for key, value in labels.items()}
+            'date': torch.tensor(date, dtype=torch.float32),
+            'location': torch.tensor(location, dtype=torch.float32),  # Array of lat/long pairs
+            'labels': labels  # Labels as arrays
         }
 
         if self.transform:
@@ -50,9 +75,10 @@ class ERA5_With_Observations(Dataset):
 
         return sample
 
+
 # Define file path and columns
 csv_file = 'dataset.csv'  # Replace with your file path
-label_columns = ['not recieved', 'low_availability',
+label_columns = ['not_recieved', 'low_availability',
        'high_availability', 'complete', 'STL1_GDS0_DBLY', '2T_GDS0_SFC',
        '2D_GDS0_SFC', 'STL2_GDS0_DBLY', 'STL3_GDS0_DBLY', 'SKT_GDS0_SFC',
        'STL4_GDS0_DBLY', 'population']
@@ -68,6 +94,6 @@ dataset = ERA5_With_Observations(csv_file=csv_file,
                                 lon_column=lon_column)
 
 # Create DataLoader
-dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+dataloader = DataLoader(dataset, batch_size=32, shuffle=False)
 
-print(len(dataset), len(dataloader))
+print(len(dataset), len(dataloader), dataset[0])
