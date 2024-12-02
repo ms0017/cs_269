@@ -177,14 +177,12 @@ def gather_population(filename):
         
         # Flatten the data array for each band and stack them into columns
         bands = [data[i].flatten() for i in range(data.shape[0])]
-        band_names = [f'band_{i+1}' for i in range(data.shape[0])]  # Create band names
         
         # Combine the band data into a DataFrame
         df = pd.DataFrame({
             'longitude': lon,
             'latitude': lat,
             'population': bands[0],
-            #**{band_names[i]: bands[i] for i in range(len(bands))}
         })
     df_africa = df[(df['longitude'] >= -20) & (df['longitude'] <= 55) & 
                 (df['latitude'] >= -40) & (df['latitude'] <= 40)]

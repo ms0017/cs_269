@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 # Define the start and end dates
 start_date = datetime(2019, 1, 1)
-end_date = datetime(2019, 1, 31)
+end_date = datetime(2019, 12, 31)
 # end_date = datetime(2024, 12, 1)
 
 # Define the periods
