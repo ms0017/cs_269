@@ -10,7 +10,7 @@ import rasterio
 
 
 # Bin_Size
-coarsen_factor = 5
+coarsen_factor = 2
 
 long_bins = np.arange(-20, 55, coarsen_factor)
 lat_bins = np.arange(-40, 40, coarsen_factor)
@@ -191,15 +191,20 @@ def gather_population(filename):
     return df_africa
 
 def gather_flights(filename):
-    with pd.read_csv(filename, on_bad_lines='skip') as dataset:
-        return dataset
+    # Corrected line, without the 'with' statement
+    dataset = pd.read_csv(filename, on_bad_lines='skip', sep='|')
+    
+    # Continue processing your dataset
+    return dataset
 
-#flights = gather_flights('flights/african_countries_flight_data.csv')
-#print(flights.columns)
+flights = gather_flights('flights/african_countries_flight_data.csv')
+print(flights.columns)
 
 population = gather_population('ppp_2019_1km_Aggregated.tif')
 population = coarsen_data(population)
 population = population.drop_duplicates(subset=['longitude', 'latitude']).dropna()
+print(population.columns, len(population), len(population['latitude'].unique()), len(population['longitude'].unique()))
+
 
 era5land = gather_era5_data("data.grib")
 era5land = coarsen_data(era5land).to_dataframe().reset_index()
@@ -222,6 +227,6 @@ merged_land = pd.merge(land_station, era5land, how='outer', on=['latitude', 'lon
 merged = pd.merge(merged_land, population, how='outer', on=['latitude', 'longitude'])
 
 print(merged.columns, len(merged), len(merged['date'].unique()), len(merged['latitude'].unique()), len(merged['longitude'].unique()))
-merged.to_csv('dataset.csv')
+merged.to_csv('dataset.csv', index=False)
 
 #print_timestep(era5land, 'population', '2019-12-31 18:00:00')
