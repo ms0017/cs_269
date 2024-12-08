@@ -1,5 +1,5 @@
 *.zip
-*.csv
+#*.csv
 *.grib
 dataset_creation/station_daily/**
 *.png
