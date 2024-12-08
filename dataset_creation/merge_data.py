@@ -18,7 +18,7 @@ lat_bins = np.arange(-40, 40, coarsen_factor)
 print(len(long_bins), len(lat_bins), len(long_bins) * len(lat_bins))
 
 
-def coarsen_data(ds):
+def coarsen_data(ds, population=False):
     if isinstance(ds, xr.Dataset):
         # Group by latitude bins and calculate mean
         ds_lat_coarsened = ds.groupby_bins('latitude', lat_bins).mean(dim='latitude')
@@ -44,10 +44,16 @@ def coarsen_data(ds):
         ds['latitude'] = pd.cut(ds['latitude'], bins=lat_bins, include_lowest=True, right=True).apply(lambda x: x.right)
         ds['longitude'] = pd.cut(ds['longitude'], bins=long_bins, include_lowest=True, right=True).apply(lambda x: x.right)
 
-        # Group by the bins and compute the mean for each bin
-        return ds.groupby(['longitude', 'latitude']).agg({
-            'population': 'sum'
-        }).reset_index()
+        if population:
+            # Group by the bins and compute the mean for each bin
+            return ds.groupby(['longitude', 'latitude']).agg({
+                'population': 'sum'
+            }).reset_index()
+        else:
+            return ds.groupby(['longitude', 'latitude']).agg({
+                'score': 'sum',
+                'elevation_ft': 'sum',
+            }).reset_index()
         
 
 
@@ -190,18 +196,20 @@ def gather_population(filename):
 
 def gather_flights(filename):
     # Corrected line, without the 'with' statement
-    dataset = pd.read_csv(filename, on_bad_lines='skip', sep='|')
+    dataset = pd.read_csv(filename, on_bad_lines='skip', sep=',')
+    dataset.rename(columns={'latitude_deg': 'latitude', 'longitude_deg': 'longitude'}, inplace=True)
     
     # Continue processing your dataset
     return dataset
 
-flights = gather_flights('flights/african_countries_flight_data.csv')
+flights = gather_flights('flights/af-airports.csv')
+flights = coarsen_data(flights, population=False)
+flights = flights.drop_duplicates(subset=['longitude', 'latitude']).dropna()
+
 
 population = gather_population('ppp_2019_1km_Aggregated.tif')
-population = coarsen_data(population)
+population = coarsen_data(population, population=True)
 population = population.drop_duplicates(subset=['longitude', 'latitude']).dropna()
-print(population.columns, len(population), len(population['latitude'].unique()), len(population['longitude'].unique()))
-
 
 era5land = gather_era5_data("data.grib")
 era5land = coarsen_data(era5land).to_dataframe().reset_index()
@@ -222,6 +230,7 @@ print(land_station.columns, len(land_station), len(land_station['date'].unique()
 
 merged_land = pd.merge(land_station, era5land, how='outer', on=['latitude', 'longitude', 'date'])
 merged = pd.merge(merged_land, population, how='outer', on=['latitude', 'longitude'])
+merged = pd.merge(merged, flights, how='outer', on=['latitude', 'longitude'])
 
 print(merged.columns, len(merged), len(merged['date'].unique()), len(merged['latitude'].unique()), len(merged['longitude'].unique()))
 merged.to_csv('dataset.csv', index=False)

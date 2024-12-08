@@ -66,7 +66,7 @@ csv_file = 'dataset.csv'  # Replace with your file path
 label_columns = ['not_recieved', 'low_availability',
        'high_availability', 'complete', 'STL1_GDS0_DBLY', '2T_GDS0_SFC',
        '2D_GDS0_SFC', 'STL2_GDS0_DBLY', 'STL3_GDS0_DBLY', 'SKT_GDS0_SFC',
-       'STL4_GDS0_DBLY', 'population']
+       'STL4_GDS0_DBLY', 'population', 'score', 'elevation_ft']
 date_column = 'date'  # The column with dates
 lat_column = 'latitude'  # The column with latitude
 lon_column = 'longitude'  # The column with longitude
