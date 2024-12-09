@@ -1,0 +1,5 @@
+cdsapi
+cartopy
+rasterio
+xarray
+torch
