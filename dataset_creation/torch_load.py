@@ -1,6 +1,7 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
 import pandas as pd
+import numpy as np
 
 class ERA5_With_Observations(Dataset):
     def __init__(self, csv_file, label_columns, date_column, lat_column, lon_column, transform=None):
@@ -66,7 +67,7 @@ csv_file = 'dataset.csv'  # Replace with your file path
 label_columns = ['not_recieved', 'low_availability',
        'high_availability', 'complete', 'STL1_GDS0_DBLY', '2T_GDS0_SFC',
        '2D_GDS0_SFC', 'STL2_GDS0_DBLY', 'STL3_GDS0_DBLY', 'SKT_GDS0_SFC',
-       'STL4_GDS0_DBLY', 'population', 'score', 'elevation_ft']
+       'STL4_GDS0_DBLY', 'population']
 date_column = 'date'  # The column with dates
 lat_column = 'latitude'  # The column with latitude
 lon_column = 'longitude'  # The column with longitude

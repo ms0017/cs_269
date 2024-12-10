@@ -1,5 +1,8 @@
 *.zip
-#*.csv
+dataset.csv
+dataset_creation/12hour/**
+land/*
+figures/
 *.grib
 dataset_creation/station_daily/**
 *.png
