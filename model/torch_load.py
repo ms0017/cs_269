@@ -23,7 +23,7 @@ class ERA5_With_Observations(Dataset):
         
         # Convert the date column to datetime and then to a timestamp (e.g., seconds since epoch)
         self.data[self.date_column] = pd.to_datetime(self.data[self.date_column], errors='coerce')
-        self.data['date_timestamp'] = self.data[self.date_column].astype(int) / 10**9  # Convert to seconds since epoch
+        self.data['date_timestamp'] = self.data[self.date_column].astype('int64') / 10**9  # Convert to seconds since epoch
         
         # Group data by date and merge latitudes and longitudes as arrays
         self.date_groups = self.data.groupby('date_timestamp').agg({
